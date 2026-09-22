@@ -1,0 +1,32 @@
+# Secrets and anything naming a person -------------------------------------
+.env
+*.env
+!.env.example
+
+# The development database, and the club's real records in it
+db.sqlite3
+*.sqlite3
+
+# Uploads: candidates' identity documents, photos and medical certificates.
+# These are personal data and must never be in a repository.
+storage/uploads/
+storage/public/
+
+# Generated at deploy time
+staticfiles/
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

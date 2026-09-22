@@ -1,0 +1,26 @@
+# Runtime dependencies for the Binh Dinh Gia platform API.
+# Pinned to what the project was built and tested against.
+#
+# Deliberately absent: numpy, opencv and fontTools. They were only ever used by
+# local verification scripts, never by the application, and together they add
+# roughly 150 MB — which matters on shared hosting.
+
+Django==5.2.17
+djangorestframework==3.18.0
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.9.0
+python-dotenv==1.2.2
+
+# PDFs: the registration form, certificates, badges and the candidate list.
+reportlab==5.0.0
+pypdf==6.17.0
+pillow==12.3.0
+qrcode==8.2
+
+# Arabic has to be shaped and reordered before ReportLab can draw it.
+arabic-reshaper==3.0.1
+python-bidi==0.6.11
+
+# MySQL driver. Pure Python on purpose: shared hosting has no compiler, so
+# mysqlclient generally cannot be installed there.
+PyMySQL==1.1.2
