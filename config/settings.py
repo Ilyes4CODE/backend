@@ -40,6 +40,11 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serves everything in STATIC_ROOT. Django itself only serves static files
+    # while DEBUG is on, and a cPanel Python app hands every URL to Passenger,
+    # so without this the admin loads with no stylesheet at all. Directly after
+    # SecurityMiddleware is where WhiteNoise has to sit.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -116,6 +121,17 @@ USE_TZ = True
 STATIC_URL = 'static/'
 # Where `collectstatic` puts the Django admin's own CSS on the server.
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Hashes each file's contents into its name and serves it with a one-year
+# cache. 'Compressed' only, not the 'Manifest' variant: that one refuses to
+# start if any stylesheet references a file that is not there, which would turn
+# a missing icon into a dead site.
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'storage' / 'uploads'
