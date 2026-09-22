@@ -41,6 +41,20 @@ cPanel → **MySQL® Databases**:
 2. Create a user with a strong password — note both down.
 3. Under **Add User To Database**, add the user to the database with
    **ALL PRIVILEGES**.
+4. **Set the character set — do this before migrating.** cPanel creates
+   databases as `latin1`, which cannot store Arabic or Vietnamese at all: the
+   first Arabic name is rejected with *"Incorrect string value"*. The client
+   connects as utf8mb4 either way, so nothing looks wrong until it fails.
+
+   cPanel → **phpMyAdmin** → select the database → **SQL**:
+
+   ```sql
+   ALTER DATABASE `cpaneluser_bdg` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+
+   Converting later means dropping and rebuilding every table, because each one
+   keeps the character set it was created with. `tools/check_db.py` reports this
+   before you migrate.
 
 ### 2. Let your PC reach it (only needed to migrate from your machine)
 
@@ -61,6 +75,7 @@ DB_HOST=your-server-hostname-or-ip     # not "localhost" from your PC
 Then:
 
 ```bash
+python tools/check_db.py     # confirms the connection and the character set
 python manage.py migrate
 ```
 

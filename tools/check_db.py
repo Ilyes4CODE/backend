@@ -66,6 +66,31 @@ tables = connection.introspection.table_names()
 print(f'Connected. MySQL {version}')
 print(f'Tables present: {len(tables)}')
 
+# cPanel creates databases as latin1 by default. The client connects as
+# utf8mb4 either way, so everything looks fine until the first Arabic name is
+# saved and MySQL rejects it outright ("Incorrect string value"). Check the
+# database itself, not the connection.
+with connection.cursor() as cursor:
+    cursor.execute(
+        'SELECT DEFAULT_CHARACTER_SET_NAME FROM information_schema.SCHEMATA '
+        'WHERE SCHEMA_NAME = %s', [config['NAME']],
+    )
+    charset = cursor.fetchone()[0]
+
+if charset != 'utf8mb4':
+    print()
+    print(f'PROBLEM: the database character set is {charset}, not utf8mb4.')
+    print('Arabic and Vietnamese text cannot be stored in it. Fix it BEFORE')
+    print('migrating — converting afterwards means rebuilding every table:')
+    print()
+    print(f'  ALTER DATABASE `{config["NAME"]}` '
+          'CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;')
+    print()
+    print('Run that in cPanel > phpMyAdmin > SQL, then migrate.')
+    sys.exit(1)
+
+print(f'Character set: {charset} — Arabic and Vietnamese are safe')
+
 if not tables:
     print('\nEmpty database — run:  python manage.py migrate')
 elif 'registrations_registration' in tables:

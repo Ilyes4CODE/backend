@@ -36,11 +36,21 @@ APPS = [
 
 
 def run(args, env=None, capture=False):
-    merged = {**os.environ, **(env or {})}
-    return subprocess.run(
-        [PYTHON, *args], cwd=BASE_DIR, env=merged, check=True,
+    # PYTHONUTF8 turns on Python's UTF-8 mode in the child process. Without
+    # it, Windows defaults to cp1252 for both the console and any file Django
+    # opens itself, and `dumpdata` dies the moment it meets an Arabic name —
+    # even when writing to a file with -o, because Django opens that file with
+    # the locale encoding.
+    merged = {**os.environ, 'PYTHONUTF8': '1', 'PYTHONIOENCODING': 'utf-8', **(env or {})}
+    result = subprocess.run(
+        [PYTHON, *args], cwd=BASE_DIR, env=merged,
         capture_output=capture, text=True, encoding='utf-8',
     )
+    if result.returncode != 0:
+        # Show what the child actually said; a bare CalledProcessError hides it.
+        detail = (result.stderr or result.stdout or '').strip()
+        sys.exit('\n{} failed:\n{}'.format(' '.join(args), detail))
+    return result
 
 
 def manage(args, env=None, capture=False):
@@ -64,13 +74,15 @@ def main():
     # 1. Read from SQLite. Unsetting DB_NAME sends settings back to the file.
     sqlite_env = {k: '' for k in ('DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_HOST')}
     print('reading the local records...')
-    dump = manage(
-        ['dumpdata', *APPS, '--natural-foreign', '--natural-primary', '--indent', '2'],
-        env=sqlite_env, capture=True,
-    ).stdout
-    rows = json.loads(dump)
+    # `-o` makes Django write the file itself, in UTF-8. Piping through stdout
+    # would hand the Arabic and Vietnamese text to the console's encoding.
+    manage(
+        ['dumpdata', *APPS, '--natural-foreign', '--natural-primary',
+         '--indent', '2', '-o', str(DUMP)],
+        env=sqlite_env,
+    )
+    rows = json.loads(io.open(DUMP, encoding='utf-8').read())
     print(f'  {len(rows)} rows read from db.sqlite3')
-    io.open(DUMP, 'w', encoding='utf-8').write(dump)
 
     # 2 & 3. The target must be migrated, and must not already hold data.
     print('checking the target database...')
