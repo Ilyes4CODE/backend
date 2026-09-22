@@ -1,0 +1,524 @@
+[
+{
+  "model": "organization.wilaya",
+  "pk": 1,
+  "fields": {
+    "code": 1,
+    "name_ar": "أدرار",
+    "name_en": "Adrar"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 2,
+  "fields": {
+    "code": 2,
+    "name_ar": "الشلف",
+    "name_en": "Chlef"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 3,
+  "fields": {
+    "code": 3,
+    "name_ar": "الأغواط",
+    "name_en": "Laghouat"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 4,
+  "fields": {
+    "code": 4,
+    "name_ar": "أم البواقي",
+    "name_en": "Oum El Bouaghi"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 5,
+  "fields": {
+    "code": 5,
+    "name_ar": "باتنة",
+    "name_en": "Batna"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 6,
+  "fields": {
+    "code": 6,
+    "name_ar": "بجاية",
+    "name_en": "Béjaïa"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 7,
+  "fields": {
+    "code": 7,
+    "name_ar": "بسكرة",
+    "name_en": "Biskra"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 8,
+  "fields": {
+    "code": 8,
+    "name_ar": "بشار",
+    "name_en": "Béchar"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 9,
+  "fields": {
+    "code": 9,
+    "name_ar": "البليدة",
+    "name_en": "Blida"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 10,
+  "fields": {
+    "code": 10,
+    "name_ar": "البويرة",
+    "name_en": "Bouira"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 11,
+  "fields": {
+    "code": 11,
+    "name_ar": "تمنراست",
+    "name_en": "Tamanrasset"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 12,
+  "fields": {
+    "code": 12,
+    "name_ar": "تبسة",
+    "name_en": "Tébessa"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 13,
+  "fields": {
+    "code": 13,
+    "name_ar": "تلمسان",
+    "name_en": "Tlemcen"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 14,
+  "fields": {
+    "code": 14,
+    "name_ar": "تيارت",
+    "name_en": "Tiaret"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 15,
+  "fields": {
+    "code": 15,
+    "name_ar": "تيزي وزو",
+    "name_en": "Tizi Ouzou"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 16,
+  "fields": {
+    "code": 16,
+    "name_ar": "الجزائر",
+    "name_en": "Alger"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 17,
+  "fields": {
+    "code": 17,
+    "name_ar": "الجلفة",
+    "name_en": "Djelfa"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 18,
+  "fields": {
+    "code": 18,
+    "name_ar": "جيجل",
+    "name_en": "Jijel"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 19,
+  "fields": {
+    "code": 19,
+    "name_ar": "سطيف",
+    "name_en": "Sétif"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 20,
+  "fields": {
+    "code": 20,
+    "name_ar": "سعيدة",
+    "name_en": "Saïda"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 21,
+  "fields": {
+    "code": 21,
+    "name_ar": "سكيكدة",
+    "name_en": "Skikda"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 22,
+  "fields": {
+    "code": 22,
+    "name_ar": "سيدي بلعباس",
+    "name_en": "Sidi Bel Abbès"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 23,
+  "fields": {
+    "code": 23,
+    "name_ar": "عنابة",
+    "name_en": "Annaba"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 24,
+  "fields": {
+    "code": 24,
+    "name_ar": "قالمة",
+    "name_en": "Guelma"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 25,
+  "fields": {
+    "code": 25,
+    "name_ar": "قسنطينة",
+    "name_en": "Constantine"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 26,
+  "fields": {
+    "code": 26,
+    "name_ar": "المدية",
+    "name_en": "Médéa"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 27,
+  "fields": {
+    "code": 27,
+    "name_ar": "مستغانم",
+    "name_en": "Mostaganem"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 28,
+  "fields": {
+    "code": 28,
+    "name_ar": "المسيلة",
+    "name_en": "M'Sila"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 29,
+  "fields": {
+    "code": 29,
+    "name_ar": "معسكر",
+    "name_en": "Mascara"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 30,
+  "fields": {
+    "code": 30,
+    "name_ar": "ورقلة",
+    "name_en": "Ouargla"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 31,
+  "fields": {
+    "code": 31,
+    "name_ar": "وهران",
+    "name_en": "Oran"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 32,
+  "fields": {
+    "code": 32,
+    "name_ar": "البيض",
+    "name_en": "El Bayadh"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 33,
+  "fields": {
+    "code": 33,
+    "name_ar": "إليزي",
+    "name_en": "Illizi"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 34,
+  "fields": {
+    "code": 34,
+    "name_ar": "برج بوعريريج",
+    "name_en": "Bordj Bou Arréridj"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 35,
+  "fields": {
+    "code": 35,
+    "name_ar": "بومرداس",
+    "name_en": "Boumerdès"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 36,
+  "fields": {
+    "code": 36,
+    "name_ar": "الطارف",
+    "name_en": "El Tarf"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 37,
+  "fields": {
+    "code": 37,
+    "name_ar": "تندوف",
+    "name_en": "Tindouf"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 38,
+  "fields": {
+    "code": 38,
+    "name_ar": "تيسمسيلت",
+    "name_en": "Tissemsilt"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 39,
+  "fields": {
+    "code": 39,
+    "name_ar": "الوادي",
+    "name_en": "El Oued"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 40,
+  "fields": {
+    "code": 40,
+    "name_ar": "خنشلة",
+    "name_en": "Khenchela"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 41,
+  "fields": {
+    "code": 41,
+    "name_ar": "سوق أهراس",
+    "name_en": "Souk Ahras"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 42,
+  "fields": {
+    "code": 42,
+    "name_ar": "تيبازة",
+    "name_en": "Tipaza"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 43,
+  "fields": {
+    "code": 43,
+    "name_ar": "ميلة",
+    "name_en": "Mila"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 44,
+  "fields": {
+    "code": 44,
+    "name_ar": "عين الدفلى",
+    "name_en": "Aïn Defla"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 45,
+  "fields": {
+    "code": 45,
+    "name_ar": "النعامة",
+    "name_en": "Naâma"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 46,
+  "fields": {
+    "code": 46,
+    "name_ar": "عين تموشنت",
+    "name_en": "Aïn Témouchent"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 47,
+  "fields": {
+    "code": 47,
+    "name_ar": "غرداية",
+    "name_en": "Ghardaïa"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 48,
+  "fields": {
+    "code": 48,
+    "name_ar": "غليزان",
+    "name_en": "Relizane"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 49,
+  "fields": {
+    "code": 49,
+    "name_ar": "تيميمون",
+    "name_en": "Timimoun"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 50,
+  "fields": {
+    "code": 50,
+    "name_ar": "برج باجي مختار",
+    "name_en": "Bordj Badji Mokhtar"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 51,
+  "fields": {
+    "code": 51,
+    "name_ar": "أولاد جلال",
+    "name_en": "Ouled Djellal"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 52,
+  "fields": {
+    "code": 52,
+    "name_ar": "بني عباس",
+    "name_en": "Béni Abbès"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 53,
+  "fields": {
+    "code": 53,
+    "name_ar": "عين صالح",
+    "name_en": "In Salah"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 54,
+  "fields": {
+    "code": 54,
+    "name_ar": "عين قزام",
+    "name_en": "In Guezzam"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 55,
+  "fields": {
+    "code": 55,
+    "name_ar": "تقرت",
+    "name_en": "Touggourt"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 56,
+  "fields": {
+    "code": 56,
+    "name_ar": "جانت",
+    "name_en": "Djanet"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 57,
+  "fields": {
+    "code": 57,
+    "name_ar": "المغير",
+    "name_en": "El M'Ghair"
+  }
+},
+{
+  "model": "organization.wilaya",
+  "pk": 58,
+  "fields": {
+    "code": 58,
+    "name_ar": "المنيعة",
+    "name_en": "El Meniaa"
+  }
+}
+]

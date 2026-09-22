@@ -77,7 +77,11 @@ Then:
 ```bash
 python tools/check_db.py     # confirms the connection and the character set
 python manage.py migrate
+python manage.py loaddata wilayas
 ```
+
+`wilayas` is the 58 wilayas of Algeria. Nothing else creates them, and a club
+cannot be registered without one, so load it into every fresh database.
 
 ### 4. Copy the existing records across
 
