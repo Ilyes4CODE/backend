@@ -449,3 +449,32 @@ class GalleryTests(TestCase):
         self.client.patch(
             f'/api/admin/gallery/{created["id"]}/', {'active': False}, format='json')
         self.assertEqual(self.client.get('/api/gallery/').json(), [])
+
+
+class PublicMediaIsServedInProduction(TestCase):
+    """The carousel and post attachments must load with DEBUG off.
+
+    Django's test runner already forces DEBUG=False, which is the whole point:
+    this was originally wired with `django.conf.urls.static.static()`, which
+    quietly returns no routes unless DEBUG is on. Everything worked locally and
+    every image 404'd on the live site.
+    """
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        os.makedirs(os.path.join(self.root, 'gallery'))
+        with open(os.path.join(self.root, 'gallery', 'photo.gif'), 'wb') as handle:
+            handle.write(_GIF_BYTES)
+
+    def test_a_public_file_is_downloadable(self):
+        with override_settings(PUBLIC_MEDIA_ROOT=self.root):
+            response = self.client.get('/public-media/gallery/photo.gif')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('max-age=', response['Cache-Control'])
+
+    def test_registration_documents_are_not_reachable_through_it(self):
+        """MEDIA_ROOT sits outside PUBLIC_MEDIA_ROOT and must stay there."""
+        with override_settings(PUBLIC_MEDIA_ROOT=self.root):
+            response = self.client.get('/public-media/../uploads/anything.pdf')
+        self.assertNotEqual(response.status_code, 200)
