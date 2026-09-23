@@ -45,6 +45,9 @@ MIDDLEWARE = [
     # so without this the admin loads with no stylesheet at all. Directly after
     # SecurityMiddleware is where WhiteNoise has to sit.
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    # Below WhiteNoise, so the files it serves keep their own long cache,
+    # and above everything else, so it stamps whatever the app returns.
+    'config.middleware.NoStoreDynamicResponses',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
