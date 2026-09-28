@@ -63,6 +63,25 @@ class RegistrationCreateView(APIView):
 
         category, is_minor, age = categorize(data['birth_date'])
 
+        # Each branch opens its own categories, so the branch has to be known.
+        # A club with no branches at all still takes candidates directly —
+        # otherwise the club-only path would be a way round every window.
+        club, center = data['club'], data.get('center')
+        if center is None and club.centers.filter(active=True).exists():
+            return Response(
+                {'center': ['Choose the branch you are joining.'], 'code': 'CENTER_REQUIRED'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if center is not None and not center.accepts(category):
+            return Response(
+                {
+                    'detail': 'This branch is not taking registrations for that category.',
+                    'code': 'CATEGORY_CLOSED',
+                    'category': category,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         errors = {}
         if is_minor:
             for field in ('parent_name', 'parent_id_type', 'parent_id_number', 'parent_id_issue_date'):

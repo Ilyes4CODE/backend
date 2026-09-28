@@ -13,6 +13,7 @@ from .models import (
 from .permissions import IsClubLevel, IsSuperAdmin, can_manage_club, scope_queryset_to_club
 from .serializers import (
     AdminUserSerializer,
+    BranchCategoriesSerializer,
     CenterSerializer,
     ClubPublicSerializer,
     ClubSerializer,
@@ -76,7 +77,10 @@ class CenterViewSet(viewsets.ModelViewSet):
     pagination_class = None
 
     def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
+        # A branch manager may not edit their branch, but they do run its
+        # registration windows. Who may touch *which* branch is settled by
+        # get_queryset below, so the action only needs a signed-in user.
+        if self.request.method in permissions.SAFE_METHODS or self.action == 'categories':
             return [permissions.IsAuthenticated()]
         return [IsClubLevel()]
 
@@ -128,6 +132,31 @@ class CenterViewSet(viewsets.ModelViewSet):
         record(self.request.user, ActivityLog.BRANCH_DELETED, instance.name_en,
                club=instance.club)
         instance.delete()
+
+    @action(detail=True, methods=['patch'], url_path='categories')
+    def categories(self, request, pk=None):
+        """Open or close this branch's registrations, category by category.
+
+        Allowed for the branch's own manager, its club's president and the
+        national admin. get_object() goes through get_queryset, which already
+        confines a manager to their own branch and a president to their own
+        club — anyone else gets a 404, exactly as for reading the branch.
+        """
+        center = self.get_object()
+        serializer = BranchCategoriesSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        before = list(center.open_categories or [])
+        center.open_categories = serializer.validated_data['open_categories']
+        center.save(update_fields=['open_categories'])
+
+        opened = [c for c in center.open_categories if c not in before]
+        closed = [c for c in before if c not in center.open_categories]
+        if opened or closed:
+            record(request.user, ActivityLog.BRANCH_UPDATED, center.name_en,
+                   club=center.club, center=center,
+                   opened=opened, closed=closed)
+        return Response(CenterSerializer(center).data)
 
 
 class AdminUserViewSet(viewsets.ModelViewSet):

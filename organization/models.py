@@ -1,6 +1,18 @@
 from django.conf import settings
 from django.db import models
 
+# A plain module with no model imports, so organization can depend on it without
+# a cycle through registrations.models (which points back here).
+from registrations.categorization import CATEGORY_CHOICES
+
+CATEGORY_CODES = [code for code, _ in CATEGORY_CHOICES]
+
+
+def all_category_codes():
+    """Every category, in the federation's order. A callable, not a list
+    literal: a mutable default would be one list shared by every branch."""
+    return list(CATEGORY_CODES)
+
 
 class Wilaya(models.Model):
     """An Algerian province. Seeded once; clubs are opened inside one."""
@@ -51,12 +63,25 @@ class Center(models.Model):
     address = models.CharField(max_length=255, blank=True)
     active = models.BooleanField(default=True)
 
+    # Which age categories this branch is taking registrations for. A branch
+    # may have room for its youngsters and none for adults, or the reverse, so
+    # each one opens and closes its own. Everything is open by default — a new
+    # branch works the moment it is created, and existing ones kept accepting
+    # exactly who they accepted before this existed.
+    #
+    # The national switch in SiteSettings still overrides all of this: when it
+    # is off, no branch takes anyone.
+    open_categories = models.JSONField(default=all_category_codes)
+
     class Meta:
         ordering = ['name_en']
         unique_together = ('club', 'name_en')
 
     def __str__(self):
         return f'{self.name_en} — {self.club.name_en}'
+
+    def accepts(self, category: str) -> bool:
+        return self.active and category in (self.open_categories or [])
 
 
 class UserProfile(models.Model):

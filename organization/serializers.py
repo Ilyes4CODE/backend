@@ -6,7 +6,9 @@ from rest_framework import serializers
 
 from registrations.models import Registration
 
-from .models import Center, Club, TrainingGroup, UserProfile, WeeklySession, Wilaya
+from .models import (
+    CATEGORY_CODES, Center, Club, TrainingGroup, UserProfile, WeeklySession, Wilaya,
+)
 
 User = get_user_model()
 
@@ -41,7 +43,8 @@ class CenterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Center
         fields = ['id', 'club', 'name_ar', 'name_en', 'address', 'active',
-                  'managers', 'registration_count']
+                  'open_categories', 'managers', 'registration_count']
+        read_only_fields = ['open_categories']
 
     def get_managers(self, obj):
         rows = (
@@ -63,6 +66,37 @@ class CenterSerializer(serializers.ModelSerializer):
 
     def get_registration_count(self, obj) -> int:
         return obj.registrations.count()
+
+
+class CenterPublicSerializer(serializers.ModelSerializer):
+    """A branch as the public registration form sees it.
+
+    Deliberately not CenterSerializer. That one is for the dashboard and nests
+    each branch manager's email, name and last login, plus how many people have
+    registered — and it used to be what /api/directory/ returned, to anyone,
+    with no token.
+    """
+
+    class Meta:
+        model = Center
+        fields = ['id', 'name_ar', 'name_en', 'address', 'open_categories']
+        read_only_fields = fields
+
+
+class BranchCategoriesSerializer(serializers.Serializer):
+    """The categories a branch is open for, as sent from the dashboard."""
+
+    open_categories = serializers.ListField(
+        child=serializers.ChoiceField(choices=CATEGORY_CODES),
+        allow_empty=True,
+    )
+
+    def validate_open_categories(self, value):
+        # Stored in the federation's order, once each, whatever order the
+        # switches were flipped in — so two branches with the same windows
+        # hold the same value.
+        chosen = set(value)
+        return [code for code in CATEGORY_CODES if code in chosen]
 
 
 class ClubSerializer(serializers.ModelSerializer):
@@ -125,7 +159,7 @@ class ClubPublicSerializer(serializers.ModelSerializer):
         fields = ['id', 'wilaya', 'name_ar', 'name_en', 'centers']
 
     def get_centers(self, obj):
-        return CenterSerializer(obj.centers.filter(active=True), many=True).data
+        return CenterPublicSerializer(obj.centers.filter(active=True), many=True).data
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
