@@ -300,7 +300,7 @@ class RosterPrintView(APIView):
     def get(self, request):
         from django.http import HttpResponse
 
-        from organization.models import Club
+        from organization.models import Center, Club
 
         from .rosters import generate_roster
 
@@ -309,22 +309,30 @@ class RosterPrintView(APIView):
         view.kwargs = {}
         rows = list(view.get_queryset().select_related('club', 'center'))
 
-        title = 'Candidates'
-        if club_id := request.query_params.get('club'):
-            club = Club.objects.filter(pk=club_id).first()
-            if club:
-                title = club.name_en
-        else:
-            profile = profile_for(request.user)
-            if profile and profile.is_branch_manager and profile.center:
-                title = f'{profile.club.name_en} — {profile.center.name_en}'
-            elif profile and profile.club:
-                title = profile.club.name_en
+        # Whose list this is decides the letterhead: the club's wilaya
+        # directorate and name, and the branch under the title. A national
+        # list across every club has neither.
+        club, center = None, None
+        profile = profile_for(request.user)
+        if profile and profile.is_branch_manager and profile.center:
+            club, center = profile.club, profile.center
+        elif profile and profile.club:
+            club = profile.club
+        elif club_id := request.query_params.get('club'):
+            club = Club.objects.select_related('wilaya').filter(pk=club_id).first()
+        if center is None and (center_id := request.query_params.get('center')):
+            branches = Center.objects.select_related('club__wilaya')
+            # Confined to the club already settled on, so a president cannot put
+            # another club's branch on their letterhead. Only the national admin
+            # reaches here with no club, and they may print any branch.
+            center = (branches.filter(club=club) if club else branches).filter(pk=center_id).first()
+            if center is not None and club is None:
+                club = center.club
 
         # Portrait by default; landscape is there for anyone who needs the
         # phone column too.
         orientation = request.query_params.get('orientation', 'portrait')
-        buffer = generate_roster(rows, title=title, orientation=orientation)
+        buffer = generate_roster(rows, orientation=orientation, club=club, center=center)
         response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="candidates.pdf"'
         return response

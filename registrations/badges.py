@@ -3,7 +3,7 @@
 A badge is proof of a paid-up membership for the season, so it is only issued
 once the admin has marked the registration PAID. Printed two-up on A4 — the
 front carries the photo, name and category; the back carries the club details
-and the fee terms.
+and the card's terms of use. No fees: they differ from club to club.
 """
 
 import io
@@ -39,7 +39,7 @@ TEXT = {
         'category': 'الفئة',
         'reference': 'المرجع',
         'club': 'النادي',
-        'center': 'المركز',
+        'center': 'الفرع',
         'paid': 'مدفوع',
         'member': 'العضو',
         'terms': 'بطاقة شخصية، ملك للنادي. تُقدَّم عند كل حصة.',

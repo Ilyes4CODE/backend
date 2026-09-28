@@ -17,15 +17,24 @@ from pathlib import Path
 from reportlab.lib.pagesizes import A4, landscape, portrait
 from reportlab.pdfgen import canvas
 
+from .letterhead import official_lines
 from .models import SiteSettings
-from .typography import fonts_for, register_fonts, resolve
+from .typography import fonts_for, register_fonts, resolve, shape
 
 MM = 2.834645669
 LOGO = Path(__file__).resolve().parent / 'assets' / 'logo-transparent.png'
 
 MARGIN = 12 * MM
 ROW_H = 7.2 * MM
-HEADER_H = 38 * MM
+# From the top edge of the page down to the column headings. Page one carries
+# the full official letterhead; the pages after it only need to say which list
+# they belong to, and giving them the whole masthead again cost a third of
+# every page on a long register.
+HEADER_FIRST = 61 * MM
+HEADER_REST = 25 * MM
+LOGO_SIZE = 20 * MM
+
+ROSTER_TITLE = 'قائمة المنخرطين'
 # The row is indented this far from the margin, so the columns have that much
 # less to work with.
 TABLE_INSET = 2
@@ -119,32 +128,75 @@ def _fit(c, text, font, width_mm, start=8.0, floor=5.0):
     return size
 
 
-def _draw_header(c, title, subtitle, page, page_w, page_h, columns):
+def _centred(c, x, y, text, font, size, max_width=None):
+    """Centred, and shrunk until it fits — a long club name must not run
+    underneath the logos."""
+    drawn = shape(text)
+    if max_width:
+        while size > 7 and c.stringWidth(drawn, font, size) > max_width:
+            size -= 0.25
+    c.setFont(font, size)
+    c.drawCentredString(x, y, drawn)
+
+
+def _draw_letterhead(c, club, title, subtitle, page_w, page_h):
+    """Page one: the official letterhead, the club's logo on both sides of it."""
     top = page_h - MARGIN
+    middle = page_w / 2
 
     if LOGO.exists():
-        c.drawImage(str(LOGO), MARGIN, top - 17 * MM, width=17 * MM, height=17 * MM, mask='auto')
+        for x in (MARGIN, page_w - MARGIN - LOGO_SIZE):
+            c.drawImage(str(LOGO), x, top - LOGO_SIZE, width=LOGO_SIZE,
+                        height=LOGO_SIZE, mask='auto')
 
     c.setFillColorRGB(0.1, 0.1, 0.1)
-    c.setFont('Tahoma-Bold', 15)
-    c.drawString(MARGIN + 21 * MM, top - 6.5 * MM, title)
+    between_logos = page_w - 2 * MARGIN - 2 * LOGO_SIZE - 8 * MM
+    y = top - 5 * MM
+    for text, size, bold in official_lines(club):
+        _centred(c, middle, y, text, 'Tahoma-Bold' if bold else 'Tahoma', size,
+                 max_width=between_logos)
+        y -= 5.4 * MM
 
-    c.setFillGray(0.42)
-    c.setFont('Tahoma', 9)
-    c.drawString(MARGIN + 21 * MM, top - 12 * MM, subtitle)
-
-    c.setFont('Tahoma', 8.5)
-    c.drawRightString(page_w - MARGIN, top - 6.5 * MM, date.today().strftime('%Y/%m/%d'))
-    c.drawRightString(page_w - MARGIN, top - 12 * MM, f'Page {page}')
-
-    # A brand rule under the masthead separates it from the table.
+    # A brand rule closes the letterhead off from the document itself.
+    rule_y = top - LOGO_SIZE - 5 * MM
     c.setStrokeColorRGB(*BRAND)
     c.setLineWidth(1.1)
-    c.line(MARGIN, top - 19 * MM, page_w - MARGIN, top - 19 * MM)
+    c.line(MARGIN, rule_y, page_w - MARGIN, rule_y)
+
+    _centred(c, middle, rule_y - 7.5 * MM, title, 'Tahoma-Bold', 15)
+
+    c.setFillGray(0.42)
+    _centred(c, middle, rule_y - 13 * MM, subtitle, 'Tahoma', 9.5)
+    c.setFont('Tahoma', 8.5)
+    c.drawRightString(page_w - MARGIN, rule_y - 13 * MM,
+                      shape(f'التاريخ: {date.today().strftime("%Y/%m/%d")}'))
+
+
+def _draw_running_head(c, title, subtitle, page_w, page_h):
+    """Every page after the first: enough to tell which list a loose sheet is."""
+    top = page_h - MARGIN
+    c.setFillColorRGB(0.1, 0.1, 0.1)
+    c.setFont('Tahoma-Bold', 11)
+    c.drawRightString(page_w - MARGIN, top - 5 * MM, shape(title))
+    c.setFillGray(0.42)
+    c.setFont('Tahoma', 8.5)
+    c.drawString(MARGIN, top - 5 * MM, shape(subtitle))
+    c.setStrokeColorRGB(*BRAND)
+    c.setLineWidth(0.8)
+    c.line(MARGIN, top - 8 * MM, page_w - MARGIN, top - 8 * MM)
+
+
+def _draw_header(c, title, subtitle, page, page_w, page_h, columns, club=None):
+    if page == 1:
+        _draw_letterhead(c, club, title, subtitle, page_w, page_h)
+        header = HEADER_FIRST
+    else:
+        _draw_running_head(c, title, subtitle, page_w, page_h)
+        header = HEADER_REST
 
     # Column headings: reversed out of a dark band, which is what makes a
     # table read as a table rather than as shaded rows.
-    y = page_h - HEADER_H
+    y = page_h - header
     table_w = page_w - 2 * MARGIN
     c.setFillColorRGB(*HEAD_BG)
     c.rect(MARGIN, y - 1 * MM, table_w, ROW_H, fill=1, stroke=0)
@@ -156,6 +208,29 @@ def _draw_header(c, title, subtitle, page, page_w, page_h, columns):
         c.drawString(x, y + 1.5 * MM, heading.upper())
         x += width * MM
     return y - 1 * MM
+
+
+# Rows stop this far above the bottom margin, leaving room for the footer.
+ROWS_FLOOR = MARGIN + ROW_H + 8 * MM
+
+
+def _capacity(page_h, header):
+    """How many rows the loop below will put on a page with this header.
+
+    Worked out from the same floor the loop breaks on, so "page 1 of N" cannot
+    disagree with how many pages actually get printed.
+    """
+    table_top = page_h - header - 1 * MM
+    if table_top < ROWS_FLOOR:
+        return 0
+    return int((table_top - ROWS_FLOOR) // ROW_H) + 1
+
+
+def _page_count(total, page_h):
+    first, rest = _capacity(page_h, HEADER_FIRST), _capacity(page_h, HEADER_REST)
+    if total <= first:
+        return 1
+    return 1 + -(-(total - first) // rest)
 
 
 def _draw_grid(c, columns, top_y, bottom_y, page_w):
@@ -171,7 +246,8 @@ def _draw_grid(c, columns, top_y, bottom_y, page_w):
 
 
 def generate_roster(
-    registrations, title='Candidates', subtitle='', orientation=PORTRAIT,
+    registrations, title=ROSTER_TITLE, subtitle='', orientation=PORTRAIT,
+    club=None, center=None,
 ) -> io.BytesIO:
     """One row per candidate, with a ruled signature column for the paper file.
 
@@ -189,13 +265,15 @@ def generate_roster(
     c = canvas.Canvas(buffer, pagesize=(page_w, page_h))
     c.setTitle(title)
 
-    subtitle = subtitle or f'Season {SiteSettings.load().active_season}'
-    # Work out the page count up front so the footer can say "1 of 3".
-    per_page = int((page_h - HEADER_H - MARGIN - 12 * MM) // ROW_H)
-    pages = max(1, -(-total // per_page)) if total else 1
+    if not subtitle:
+        subtitle = f'الموسم الرياضي: {SiteSettings.load().active_season}'
+        if center is not None:
+            subtitle += f'  ·  فرع {center.name_ar or center.name_en}'
+    # Worked out up front so the footer can say "1 of 3".
+    pages = _page_count(total, page_h)
 
     page = 1
-    y = _draw_header(c, title, subtitle, page, page_w, page_h, columns)
+    y = _draw_header(c, title, subtitle, page, page_w, page_h, columns, club)
     table_top = y
     signature_col = columns[-1]
 
@@ -203,15 +281,15 @@ def generate_roster(
         _draw_grid(c, columns, table_top, last_y, page_w)
         c.setFillGray(0.45)
         c.setFont('Tahoma', 8)
-        c.drawString(MARGIN, MARGIN - 3 * MM, f'{total} candidate(s)')
-        c.drawRightString(page_w - MARGIN, MARGIN - 3 * MM, f'Page {page} of {pages}')
+        c.drawRightString(page_w - MARGIN, MARGIN - 3 * MM, shape(f'عدد المنخرطين: {total}'))
+        c.drawString(MARGIN, MARGIN - 3 * MM, shape(f'الصفحة {page} من {pages}'))
 
     for index, registration in enumerate(rows, start=1):
-        if y < MARGIN + ROW_H + 8 * MM:
+        if y < ROWS_FLOOR:
             close_page(y)
             c.showPage()
             page += 1
-            y = _draw_header(c, title, subtitle, page, page_w, page_h, columns)
+            y = _draw_header(c, title, subtitle, page, page_w, page_h, columns, club)
             table_top = y
 
         y -= ROW_H

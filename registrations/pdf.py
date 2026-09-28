@@ -15,6 +15,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
+from .letterhead import MINISTRY, REPUBLIC, club_heading, directorate
 from .models import RequiredDocument, SiteSettings, UploadedDocument
 
 FONTS_DIR = Path(__file__).resolve().parent / 'fonts'
@@ -111,20 +112,12 @@ def generate_registration_pdf(registration) -> io.BytesIO:
         )
     f.move(22)
 
-    f.centered('الجمهورية الجزائرية الديمقراطية الشعبية', size=11, bold=True, dy=5.5)
-    f.centered('وزارة الشباب و الرياضة', size=10, dy=5.5)
-    # Clubs are opened in any wilaya, so the directorate has to follow the
-    # candidate's own club rather than name one province for everyone.
+    # Same letterhead as the candidate list, from the same place.
     club = registration.club
-    wilaya = getattr(getattr(club, 'wilaya', None), 'name_ar', '') if club else ''
-    directorate = (
-        f'مديرية الشباب والرياضة لولاية {wilaya}' if wilaya
-        else 'مديرية الشباب والرياضة'
-    )
-    f.centered(directorate, size=10, dy=8)
-
-    club_line = club.name_ar if club and club.name_ar else 'النادي الرياضي للهواة'
-    f.centered(f'{club_line} للبيندين زا', size=10.5, bold=True, dy=5.5)
+    f.centered(REPUBLIC, size=11, bold=True, dy=5.5)
+    f.centered(MINISTRY, size=10, dy=5.5)
+    f.centered(directorate(club), size=10, dy=8)
+    f.centered(club_heading(club), size=10.5, bold=True, dy=5.5)
     f.centered(f'الموسم الرياضي: {registration.season}', size=10, dy=9)
 
     f.centered('استمارة الانخراط في رياضة البيندين زا  Binh Dinh Gia', size=13, bold=True, dy=10)
@@ -163,8 +156,8 @@ def generate_registration_pdf(registration) -> io.BytesIO:
             f'الصادرة بتاريخ: {registration.parent_id_issue_date.strftime("%Y/%m/%d") if registration.parent_id_issue_date else "..."}',
         )
         wrapped = (
-            f'أرخص لابني: {registration.first_name} {registration.last_name} بالانخراط بالنادي الرياضي للهواة '
-            'مدرسة الجنوب للبيندين زا بغرض ممارسة الفن القتالي بيندين زا، والمشاركة في التظاهرات والمنافسات '
+            f'أرخص لابني: {registration.first_name} {registration.last_name} بالانخراط ب{club_heading(club)} '
+            'بغرض ممارسة الفن القتالي بيندين زا، والمشاركة في التظاهرات والمنافسات '
             'الرياضية وكذلك التنقلات داخل وخارج تراب الولاية، كما أتعهد بدفع حقوق المساهمة الشهرية بانتظام.'
         )
         for chunk in _wrap_arabic(wrapped, width=78):
@@ -189,10 +182,7 @@ def generate_registration_pdf(registration) -> io.BytesIO:
         suffix = ' (اختياري)' if not doc.required else ''
         f.line_rtl(f'{mark} {doc.label_ar}{suffix}', size=10, dy=5.5)
 
-    f.move(4)
-    f.two_col_rtl('حقوق التأمين للموسم: 1000 دج', 'حقوق المساهمة الشهرية: 600 دج', size=10)
-
-    f.move(8)
+    f.move(12)
     c.setFont(FONT_REGULAR, 8)
     c.setFillGray(0.4)
     c.drawCentredString(PAGE_W / 2, f.y, rtl(f'{registration.reference} — {SiteSettings.load().active_season}'))

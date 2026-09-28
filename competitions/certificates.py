@@ -86,10 +86,13 @@ TEXT = {
     },
 }
 
+# A competition with no club is a national one, run by the national
+# administrator. Its certificates used to be issued in the name of one Ouargla
+# club; they carry the platform's national name now, as the public site does.
 DEFAULT_CLUB_NAME = {
-    'ar': 'النادي الرياضي للهواة مدرسة الجنوب للبيندين زا',
-    'en': 'École du Sud — Binh Dinh Gia',
-    'vi': 'École du Sud — Bình Định Gia',
+    'ar': 'بيندين زا — الجزائر',
+    'en': 'Binh Dinh Gia — Algeria',
+    'vi': 'Bình Định Gia — Algérie',
 }
 
 
