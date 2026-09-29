@@ -1,8 +1,8 @@
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import ProtectedError, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, permissions, status, viewsets
+from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -134,8 +134,31 @@ class RequiredDocumentAdminViewSet(viewsets.ModelViewSet):
     queryset = RequiredDocument.objects.all()
     pagination_class = None
 
+    def destroy(self, request, *args, **kwargs):
+        """Refuse, in words, to delete a document candidates have uploaded.
 
-class RegistrationAdminViewSet(viewsets.ReadOnlyModelViewSet):
+        Their uploads point at it and are protected, and rightly — deleting the
+        type must not take people's identity documents with it. That refusal
+        used to escape as a bare 500. Deactivating is the way to take it off
+        the form: existing uploads keep their label.
+        """
+        document = self.get_object()
+        try:
+            document.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    'detail': 'Candidates have already uploaded this document, so it '
+                              'cannot be deleted. Deactivate it to take it off the form.',
+                    'code': 'DOCUMENT_IN_USE',
+                    'uploads': UploadedDocument.objects.filter(required_document=document).count(),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RegistrationAdminViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Registration.objects.all()
 
@@ -178,6 +201,32 @@ class RegistrationAdminViewSet(viewsets.ReadOnlyModelViewSet):
                 | Q(phone__icontains=search)
             )
         return qs
+
+    def perform_destroy(self, instance):
+        """Delete a registration and everything it uploaded.
+
+        Anyone who can see the candidate may delete them: the national admin,
+        the club's president, the branch's manager. get_queryset has already
+        confined each of them, so anybody else got a 404 before reaching here.
+        The uploaded documents cascade, and their files go with them once the
+        delete commits.
+
+        The activity log keeps who deleted whom — the one record left once the
+        registration is gone.
+        """
+        from organization.activity import ActivityLog, record
+
+        # Read before the row goes; logged after, so a delete that fails never
+        # leaves an entry saying it happened.
+        label = f'{instance.reference} — {instance.first_name} {instance.last_name}'.strip()
+        club, center = instance.club, instance.center
+        detail = {'reference': instance.reference, 'status': instance.status,
+                  'payment_status': instance.payment_status}
+
+        with transaction.atomic():
+            instance.delete()
+        record(self.request.user, ActivityLog.REGISTRATION_DELETED, label,
+               club=club, center=center, **detail)
 
     def partial_update(self, request, *args, **kwargs):
         from organization.activity import ActivityLog, record

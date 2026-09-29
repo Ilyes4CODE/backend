@@ -21,6 +21,7 @@ class ActivityLog(models.Model):
     REGISTRATION_STATUS = 'REGISTRATION_STATUS'
     REGISTRATION_PAYMENT = 'REGISTRATION_PAYMENT'
     REGISTRATION_TRANSFER = 'REGISTRATION_TRANSFER'
+    REGISTRATION_DELETED = 'REGISTRATION_DELETED'
     BRANCH_CREATED = 'BRANCH_CREATED'
     BRANCH_UPDATED = 'BRANCH_UPDATED'
     BRANCH_DELETED = 'BRANCH_DELETED'
@@ -33,6 +34,7 @@ class ActivityLog(models.Model):
         (REGISTRATION_STATUS, 'Registration status changed'),
         (REGISTRATION_PAYMENT, 'Payment status changed'),
         (REGISTRATION_TRANSFER, 'Member moved to another branch'),
+        (REGISTRATION_DELETED, 'Registration deleted'),
         (BRANCH_CREATED, 'Branch created'),
         (BRANCH_UPDATED, 'Branch updated'),
         (BRANCH_DELETED, 'Branch deleted'),

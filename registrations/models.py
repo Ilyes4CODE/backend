@@ -1,7 +1,10 @@
+import os
 import uuid
 
 from django.core.validators import FileExtensionValidator
-from django.db import models
+from django.db import models, transaction
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils.text import slugify
 
 from .categorization import CATEGORY_CHOICES
@@ -164,3 +167,34 @@ class UploadedDocument(models.Model):
 
     def __str__(self):
         return f'{self.registration.reference} / {self.required_document.key}'
+
+
+# ── Candidates' files leave with their records ──────────────────────────────
+#
+# Django does not delete a file when its row goes. For these that matters more
+# than anywhere else on the platform: they are identity cards, birth
+# certificates and medical certificates, and a deleted registration must not
+# leave its documents sitting on the server with nothing pointing at them.
+
+@receiver(post_delete, sender=UploadedDocument)
+def _uploaded_document_deleted(sender, instance, **kwargs):
+    if not instance.file:
+        return
+    storage, name = instance.file.storage, instance.file.name
+
+    def discard():
+        try:
+            storage.delete(name)
+            # Each candidate's files share a folder named after the reference;
+            # take it too once it is empty, rather than leave one per
+            # deleted candidate.
+            folder = os.path.dirname(storage.path(name))
+            if folder and os.path.isdir(folder) and not os.listdir(folder):
+                os.rmdir(folder)
+        except (OSError, ValueError, NotImplementedError):
+            # A file that is already gone must never undo the delete itself.
+            pass
+
+    # Only once the delete has committed: if it is rolled back, the record
+    # still needs its file.
+    transaction.on_commit(discard)
