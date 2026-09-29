@@ -15,6 +15,7 @@ from .serializers import (
     AdminUserSerializer,
     BranchCategoriesSerializer,
     CenterSerializer,
+    ClubLetterheadSerializer,
     ClubPublicSerializer,
     ClubSerializer,
     TrainingGroupSerializer,
@@ -55,7 +56,10 @@ class ClubViewSet(viewsets.ModelViewSet):
         # Presidents read their own club; only the national admin changes clubs.
         # Branch managers are kept out entirely: a club record nests every
         # branch with its managers' emails, which is sideways information.
-        if self.request.method in permissions.SAFE_METHODS:
+        # A president does run their own club's letterhead. Which club is
+        # settled by get_queryset: theirs, and nothing else.
+        if self.request.method in permissions.SAFE_METHODS or self.action in (
+                'letterhead', 'letterhead_preview'):
             return [IsClubLevel()]
         return [IsSuperAdmin()]
 
@@ -67,6 +71,35 @@ class ClubViewSet(viewsets.ModelViewSet):
         if profile and not profile.is_super_admin:
             qs = qs.filter(id=profile.club_id) if profile.club_id else qs.none()
         return qs
+
+    @action(detail=True, methods=['get', 'patch'], url_path='letterhead')
+    def letterhead(self, request, pk=None):
+        """Read or change the club's letterhead — logos and header lines.
+
+        The national admin may change any club's; a president only their own,
+        and anyone else gets a 404 from get_object(), as for reading the club.
+        """
+        club = self.get_object()
+        if request.method == 'PATCH':
+            serializer = ClubLetterheadSerializer(
+                club, data=request.data, partial=True, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            club.refresh_from_db()
+        return Response(ClubLetterheadSerializer(club, context={'request': request}).data)
+
+    @action(detail=True, methods=['get'], url_path='letterhead/preview')
+    def letterhead_preview(self, request, pk=None):
+        """The club's letterhead as it prints: an empty candidate list."""
+        from django.http import HttpResponse
+
+        from registrations.rosters import generate_roster
+
+        club = self.get_object()
+        pdf = generate_roster(Registration.objects.none(), club=club).getvalue()
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = 'inline; filename="letterhead-preview.pdf"'
+        return response
 
 
 class CenterViewSet(viewsets.ModelViewSet):

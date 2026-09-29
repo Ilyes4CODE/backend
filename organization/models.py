@@ -1,5 +1,16 @@
+import os
+import uuid
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 from django.db import models
+from django.db.models.signals import post_delete, pre_save
+from django.dispatch import receiver
+
+# World-readable storage: a logo is public by nature, and the dashboard shows it.
+# community.models refers to this app only by string, so there is no cycle.
+from community.models import public_storage
 
 # A plain module with no model imports, so organization can depend on it without
 # a cycle through registrations.models (which points back here).
@@ -29,6 +40,26 @@ class Wilaya(models.Model):
         return f'{self.code:02d} - {self.name_en}'
 
 
+LOGO_MAX_BYTES = 2 * 1024 * 1024
+# PNG and JPEG only: those are what the PDF library draws without surprises.
+LOGO_EXTENSIONS = ['png', 'jpg', 'jpeg']
+LETTERHEAD_MAX_LINES = 6
+LETTERHEAD_MAX_CHARS = 120
+
+
+def club_logo_upload_to(instance, filename):
+    """A fresh name for every upload. Public media is served with a year-long
+    immutable cache, so a replaced logo kept under the same name would never
+    reach anyone who had already seen the old one."""
+    ext = os.path.splitext(filename)[1].lower() or '.png'
+    return f'clubs/{instance.pk or "new"}/logo-{uuid.uuid4().hex[:12]}{ext}'
+
+
+def validate_logo_size(file):
+    if file.size > LOGO_MAX_BYTES:
+        raise ValidationError('A logo must be 2 MB or smaller.')
+
+
 class Club(models.Model):
     """A club inside a wilaya. Each one may have an owner who signs in and sees
     only that club's registrations."""
@@ -45,6 +76,24 @@ class Club(models.Model):
     email = models.EmailField(blank=True)
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # ── Letterhead ── what heads the club's printed documents: the
+    # registration form, the candidate list, membership cards, certificates.
+    # Everything is optional; left empty, the platform's logo and the official
+    # wording (Republic, Ministry, the wilaya's directorate, the club) are used.
+    logo = models.ImageField(
+        upload_to=club_logo_upload_to, storage=public_storage, blank=True, null=True,
+        validators=[FileExtensionValidator(LOGO_EXTENSIONS), validate_logo_size],
+    )
+    # For the other side of the letterhead — a federation's or a league's
+    # emblem, say. Without one, the club's own logo goes on both sides.
+    logo_secondary = models.ImageField(
+        upload_to=club_logo_upload_to, storage=public_storage, blank=True, null=True,
+        validators=[FileExtensionValidator(LOGO_EXTENSIONS), validate_logo_size],
+    )
+    # One line per line of the header, top to bottom. Blank means the official
+    # wording.
+    letterhead_lines = models.TextField(blank=True)
 
     class Meta:
         ordering = ['wilaya__code', 'name_en']
@@ -151,3 +200,34 @@ def profile_for(user):
 # import point and Django picks the models up.
 from .training import TrainingGroup, WeeklySession  # noqa: E402,F401
 from .activity import ActivityLog  # noqa: E402,F401
+
+
+# ── Club logos leave the disk with their record ─────────────────────────────
+# Django does not delete a file when its row goes or its field is replaced.
+
+def _discard_logo(file_field):
+    if not file_field:
+        return
+    try:
+        file_field.storage.delete(file_field.name)
+    except (OSError, ValueError):
+        pass
+
+
+@receiver(post_delete, sender=Club)
+def _club_deleted(sender, instance, **kwargs):
+    _discard_logo(instance.logo)
+    _discard_logo(instance.logo_secondary)
+
+
+@receiver(pre_save, sender=Club)
+def _club_logo_replaced(sender, instance, **kwargs):
+    if not instance.pk:
+        return
+    previous = Club.objects.filter(pk=instance.pk).only('logo', 'logo_secondary').first()
+    if previous is None:
+        return
+    for field in ('logo', 'logo_secondary'):
+        old, new = getattr(previous, field), getattr(instance, field)
+        if old and old.name != getattr(new, 'name', None):
+            _discard_logo(old)

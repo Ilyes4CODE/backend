@@ -18,6 +18,7 @@ from rest_framework.test import APIClient
 
 from organization.models import Center, Club, UserProfile, Wilaya
 
+from . import letterhead
 from . import pdf as registration_pdf
 from . import rosters
 from .categorization import categorize
@@ -78,7 +79,16 @@ class TheRegistrationForm(DocumentTestBase):
                 return originals[name](self_, *args, **kwargs)
             return record
 
-        with mock.patch.multiple(builder, **{n: recorder(n) for n in originals}):
+        # The letterhead is drawn by the shared letterhead module, not by the
+        # form's own builder, so listen there too.
+        real_shape = letterhead.shape
+
+        def record_shape(text):
+            seen.append(str(text))
+            return real_shape(text)
+
+        with mock.patch.multiple(builder, **{n: recorder(n) for n in originals}), \
+                mock.patch.object(letterhead, 'shape', side_effect=record_shape):
             out = registration_pdf.generate_registration_pdf(registration).getvalue()
         self.assertTrue(out.startswith(b'%PDF'))
         return ' | '.join(seen)
@@ -115,6 +125,7 @@ class TheCandidateList(DocumentTestBase):
             return real_shape(text)
 
         with mock.patch.object(rosters, 'shape', side_effect=record_shape), \
+                mock.patch.object(letterhead, 'shape', side_effect=record_shape), \
                 mock.patch.object(canvas.Canvas, 'drawImage',
                                   side_effect=lambda *a, **k: images.append(a)):
             out = rosters.generate_roster(rows, **kwargs).getvalue()

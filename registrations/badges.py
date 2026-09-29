@@ -14,6 +14,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
+from .letterhead import draw_logo, primary_logo
 from .models import SiteSettings
 from .typography import fonts_for, register_fonts, resolve
 
@@ -162,8 +163,9 @@ def _draw_front(c: canvas.Canvas, x: float, y: float, registration):
     c.setFillColorRGB(*BRAND_RED)
     c.rect(x, y + CARD_H - 15 * MM, CARD_W, 3 * MM, stroke=0, fill=1)
 
-    if LOGO.exists():
-        c.drawImage(str(LOGO), x + 3 * MM, y + CARD_H - 13.5 * MM, width=12 * MM, height=12 * MM, mask='auto')
+    # The member's own club's logo, when it has set one.
+    draw_logo(c, primary_logo(registration.club, LOGO),
+              x + 3 * MM, y + CARD_H - 13.5 * MM, 12 * MM, LOGO)
 
     club_name = registration.club.name_en if registration.club else 'Binh Dinh Gia'
     c.setFillGray(1)

@@ -15,7 +15,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
-from .letterhead import MINISTRY, REPUBLIC, club_heading, directorate
+from .letterhead import ASSETS, club_heading, draw_letterhead
 from .models import RequiredDocument, SiteSettings, UploadedDocument
 
 FONTS_DIR = Path(__file__).resolve().parent / 'fonts'
@@ -99,25 +99,14 @@ def generate_registration_pdf(registration) -> io.BytesIO:
     c = canvas.Canvas(buffer, pagesize=A4)
     f = FormBuilder(c)
 
-    logo_path = Path(__file__).resolve().parent / 'assets' / 'logo.png'
-    if logo_path.exists():
-        logo_size = 20 * MM
-        c.drawImage(
-            str(logo_path),
-            PAGE_W / 2 - logo_size / 2,
-            f.y - logo_size + 4 * MM,
-            width=logo_size,
-            height=logo_size,
-            mask='auto',
-        )
-    f.move(22)
-
-    # Same letterhead as the candidate list, from the same place.
+    # The club's letterhead — its logos on both sides, its header between
+    # them — drawn by the same code as the candidate list's.
     club = registration.club
-    f.centered(REPUBLIC, size=11, bold=True, dy=5.5)
-    f.centered(MINISTRY, size=10, dy=5.5)
-    f.centered(directorate(club), size=10, dy=8)
-    f.centered(club_heading(club), size=10.5, bold=True, dy=5.5)
+    bottom = draw_letterhead(
+        c, club, top=PAGE_H - 12 * MM, page_w=PAGE_W, margin=f.left,
+        regular=FONT_REGULAR, bold=FONT_BOLD, default_logo=ASSETS / 'logo.png',
+    )
+    f.y = bottom - 6 * MM
     f.centered(f'الموسم الرياضي: {registration.season}', size=10, dy=9)
 
     f.centered('استمارة الانخراط في رياضة البيندين زا  Binh Dinh Gia', size=13, bold=True, dy=10)

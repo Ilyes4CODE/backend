@@ -12,27 +12,26 @@ off a signature sheet — and keeps everything else.
 
 import io
 from datetime import date
-from pathlib import Path
 
 from reportlab.lib.pagesizes import A4, landscape, portrait
 from reportlab.pdfgen import canvas
 
-from .letterhead import official_lines
+from .letterhead import draw_letterhead, letterhead_depth
 from .models import SiteSettings
 from .typography import fonts_for, register_fonts, resolve, shape
 
 MM = 2.834645669
-LOGO = Path(__file__).resolve().parent / 'assets' / 'logo-transparent.png'
 
 MARGIN = 12 * MM
 ROW_H = 7.2 * MM
 # From the top edge of the page down to the column headings. Page one carries
-# the full official letterhead; the pages after it only need to say which list
-# they belong to, and giving them the whole masthead again cost a third of
-# every page on a long register.
-HEADER_FIRST = 61 * MM
+# the full letterhead; the pages after it only need to say which list they
+# belong to, and giving them the whole masthead again cost a third of every
+# page on a long register.
 HEADER_REST = 25 * MM
-LOGO_SIZE = 20 * MM
+# Page one: the letterhead, then this much for the rule, the title and the
+# subtitle beneath it.
+BELOW_LETTERHEAD = 28 * MM
 
 ROSTER_TITLE = 'قائمة المنخرطين'
 # The row is indented this far from the margin, so the columns have that much
@@ -139,26 +138,22 @@ def _centred(c, x, y, text, font, size, max_width=None):
     c.drawCentredString(x, y, drawn)
 
 
+def header_first(club) -> float:
+    """Page one's header height. It follows the letterhead, which a club may
+    give up to six lines."""
+    return MARGIN + letterhead_depth(club) + BELOW_LETTERHEAD
+
+
 def _draw_letterhead(c, club, title, subtitle, page_w, page_h):
-    """Page one: the official letterhead, the club's logo on both sides of it."""
+    """Page one: the club's letterhead, then the list's title."""
     top = page_h - MARGIN
     middle = page_w / 2
 
-    if LOGO.exists():
-        for x in (MARGIN, page_w - MARGIN - LOGO_SIZE):
-            c.drawImage(str(LOGO), x, top - LOGO_SIZE, width=LOGO_SIZE,
-                        height=LOGO_SIZE, mask='auto')
-
     c.setFillColorRGB(0.1, 0.1, 0.1)
-    between_logos = page_w - 2 * MARGIN - 2 * LOGO_SIZE - 8 * MM
-    y = top - 5 * MM
-    for text, size, bold in official_lines(club):
-        _centred(c, middle, y, text, 'Tahoma-Bold' if bold else 'Tahoma', size,
-                 max_width=between_logos)
-        y -= 5.4 * MM
+    bottom = draw_letterhead(c, club, top=top, page_w=page_w, margin=MARGIN)
 
     # A brand rule closes the letterhead off from the document itself.
-    rule_y = top - LOGO_SIZE - 5 * MM
+    rule_y = bottom - 4 * MM
     c.setStrokeColorRGB(*BRAND)
     c.setLineWidth(1.1)
     c.line(MARGIN, rule_y, page_w - MARGIN, rule_y)
@@ -189,7 +184,7 @@ def _draw_running_head(c, title, subtitle, page_w, page_h):
 def _draw_header(c, title, subtitle, page, page_w, page_h, columns, club=None):
     if page == 1:
         _draw_letterhead(c, club, title, subtitle, page_w, page_h)
-        header = HEADER_FIRST
+        header = header_first(club)
     else:
         _draw_running_head(c, title, subtitle, page_w, page_h)
         header = HEADER_REST
@@ -226,8 +221,8 @@ def _capacity(page_h, header):
     return int((table_top - ROWS_FLOOR) // ROW_H) + 1
 
 
-def _page_count(total, page_h):
-    first, rest = _capacity(page_h, HEADER_FIRST), _capacity(page_h, HEADER_REST)
+def _page_count(total, page_h, first_header):
+    first, rest = _capacity(page_h, first_header), _capacity(page_h, HEADER_REST)
     if total <= first:
         return 1
     return 1 + -(-(total - first) // rest)
@@ -270,7 +265,7 @@ def generate_roster(
         if center is not None:
             subtitle += f'  ·  فرع {center.name_ar or center.name_en}'
     # Worked out up front so the footer can say "1 of 3".
-    pages = _page_count(total, page_h)
+    pages = _page_count(total, page_h, header_first(club))
 
     page = 1
     y = _draw_header(c, title, subtitle, page, page_w, page_h, columns, club)

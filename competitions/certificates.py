@@ -15,6 +15,7 @@ from pathlib import Path
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas
 
+from registrations.letterhead import draw_logo, primary_logo
 from registrations.models import SiteSettings
 from registrations.typography import fonts_for, register_fonts, resolve
 
@@ -142,9 +143,11 @@ def _draw_certificate(c: canvas.Canvas, competition, participant, award: str, pl
     c.setLineWidth(0.8)
     c.rect(15 * MM, 15 * MM, PAGE_W - 30 * MM, PAGE_H - 30 * MM)
 
-    if LOGO.exists():
-        size = 26 * MM
-        c.drawImage(str(LOGO), centre - size / 2, PAGE_H - 48 * MM, width=size, height=size, mask='auto')
+    # The organising club's logo; a national competition has no club and keeps
+    # the platform's. The header lines stay as they are: a certificate is
+    # printed in the competitor's language, a club's letterhead only in Arabic.
+    size = 26 * MM
+    draw_logo(c, primary_logo(competition.club, LOGO), centre - size / 2, PAGE_H - 48 * MM, size, LOGO)
 
     centred(words['republic'], PAGE_H - 55 * MM, 10)
     centred(words['ministry'], PAGE_H - 61 * MM, 9)

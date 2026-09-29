@@ -99,6 +99,74 @@ class BranchCategoriesSerializer(serializers.Serializer):
         return [code for code in CATEGORY_CODES if code in chosen]
 
 
+class ClubLetterheadSerializer(serializers.ModelSerializer):
+    """A club's letterhead: its logos and header lines.
+
+    Logos arrive as multipart uploads. Taking one away is an explicit flag
+    rather than an empty upload, which multipart cannot tell apart from "left
+    alone".
+    """
+
+    remove_logo = serializers.BooleanField(write_only=True, required=False, default=False)
+    remove_logo_secondary = serializers.BooleanField(write_only=True, required=False, default=False)
+    logo_url = serializers.SerializerMethodField()
+    logo_secondary_url = serializers.SerializerMethodField()
+    default_lines = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Club
+        fields = [
+            'id', 'logo', 'logo_secondary', 'letterhead_lines',
+            'remove_logo', 'remove_logo_secondary',
+            'logo_url', 'logo_secondary_url', 'default_lines',
+        ]
+        extra_kwargs = {
+            'logo': {'write_only': True, 'required': False},
+            'logo_secondary': {'write_only': True, 'required': False},
+            'letterhead_lines': {'required': False},
+        }
+
+    def _url(self, field):
+        if not field:
+            return None
+        request = self.context.get('request')
+        # Absolute: the dashboard lives on another domain than the API.
+        return request.build_absolute_uri(field.url) if request else field.url
+
+    def get_logo_url(self, obj):
+        return self._url(obj.logo)
+
+    def get_logo_secondary_url(self, obj):
+        return self._url(obj.logo_secondary)
+
+    def get_default_lines(self, obj):
+        # What an empty header falls back to — shown in the editor, so the
+        # club can start from the official wording rather than a blank box.
+        from registrations.letterhead import default_lines
+        return default_lines(obj)
+
+    def validate_letterhead_lines(self, value):
+        from .models import LETTERHEAD_MAX_CHARS, LETTERHEAD_MAX_LINES
+
+        lines = [line.strip() for line in (value or '').splitlines() if line.strip()]
+        if len(lines) > LETTERHEAD_MAX_LINES:
+            raise serializers.ValidationError(
+                f'A letterhead has at most {LETTERHEAD_MAX_LINES} lines.')
+        too_long = [line for line in lines if len(line) > LETTERHEAD_MAX_CHARS]
+        if too_long:
+            raise serializers.ValidationError(
+                f'Each line is at most {LETTERHEAD_MAX_CHARS} characters.')
+        # Stored tidy: no blank lines, no stray spaces.
+        return '\n'.join(lines)
+
+    def update(self, instance, validated_data):
+        for flag, field in (('remove_logo', 'logo'), ('remove_logo_secondary', 'logo_secondary')):
+            if validated_data.pop(flag, False) and field not in validated_data:
+                # Setting None lets the pre_save receiver delete the old file.
+                setattr(instance, field, None)
+        return super().update(instance, validated_data)
+
+
 class ClubSerializer(serializers.ModelSerializer):
     centers = CenterSerializer(many=True, read_only=True)
     wilaya_name_ar = serializers.CharField(source='wilaya.name_ar', read_only=True)
