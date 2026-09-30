@@ -93,3 +93,35 @@ class DynamicResponsesAreNotCacheable(TestCase):
         with open(os.path.join(self.media_root, 'gallery', 'photo.gif'), 'wb') as handle:
             handle.write(base64.b64decode(
                 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'))
+
+
+class AnyOriginMayCallTheApi(TestCase):
+    """A phone that reached the site over http:// had every API call refused:
+    only the https:// origins were allowed. The API now answers any origin —
+    which stays safe only while no credentials are allowed cross-origin, so
+    that is pinned here too."""
+
+    def test_an_unlisted_origin_is_answered(self):
+        response = self.client.get('/api/settings/', HTTP_ORIGIN='http://binhdinhgia.com')
+        self.assertEqual(response['Access-Control-Allow-Origin'], '*')
+
+    def test_credentials_are_never_allowed_cross_origin(self):
+        """With cookies allowed, any site could act as a signed-in visitor."""
+        response = self.client.get('/api/settings/', HTTP_ORIGIN='https://evil.example')
+        self.assertNotIn('Access-Control-Allow-Credentials', response)
+        self.assertFalse(settings.CORS_ALLOW_CREDENTIALS)
+
+    def test_signing_in_does_not_rely_on_cookies(self):
+        """What makes allowing every origin safe: a token, not a session."""
+        auth = settings.REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']
+        self.assertFalse(any('Session' in cls for cls in auth))
+
+    def test_the_preflight_lets_the_token_through(self):
+        response = self.client.options(
+            '/api/admin/settings/',
+            HTTP_ORIGIN='http://binhdinhgia.com',
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD='PATCH',
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS='authorization, content-type',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('authorization', response['Access-Control-Allow-Headers'].lower())

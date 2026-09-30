@@ -181,6 +181,19 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
     'http://localhost:5173,http://127.0.0.1:5173',
 ).split(',')
 
+# The API answers every origin. A visitor who reached the site by any other
+# address than the listed ones — http:// rather than https:// was the one that
+# happened — had every call refused.
+#
+# Safe here because of how signing in works: a bearer token the site attaches
+# itself, never a cookie the browser sends on its own, and credentials are not
+# allowed cross-origin. Another site can call the API, but it has no way to do
+# so as anybody. Keep CORS_ALLOW_CREDENTIALS off for as long as this is on.
+#
+# CORS_ALLOW_ALL_ORIGINS=False in .env goes back to the list above.
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
+CORS_ALLOW_CREDENTIALS = False
+
 
 # ── Production hardening ────────────────────────────────────────────────────
 # Only applied with DEBUG off, so local development is untouched. A shared host
