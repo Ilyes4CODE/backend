@@ -43,19 +43,22 @@
             </td>
           </tr>
 
+          {% comment %}
+            The illustrations share one band of their own background colour, so
+            neither shows as a pale box against the white body.
+          {% endcomment %}
           {% if has.header %}
-          <tr><td><img src="cid:header" width="600" alt="" style="width:100%;max-width:600px;"></td></tr>
-          {% else %}
-          <tr><td style="height:4px;line-height:4px;font-size:0;background:#E4191D;">&nbsp;</td></tr>
+          <tr><td bgcolor="#FDF6EA" style="background:#FDF6EA;line-height:0;font-size:0;"><img src="cid:header" width="600" alt="" style="width:100%;max-width:600px;"></td></tr>
           {% endif %}
-
           {% if has.hero %}
           <tr>
-            <td align="center" class="pad" style="padding:24px 48px 0;">
-              <img src="cid:hero" width="440" alt="" style="width:100%;max-width:440px;margin:0 auto;">
+            <td align="center" class="pad" bgcolor="#FDF6EA" style="background:#FDF6EA;padding:{% if has.header %}4px{% else %}24px{% endif %} 56px 28px;">
+              <img src="cid:hero" width="420" alt="" style="width:100%;max-width:420px;margin:0 auto;">
             </td>
           </tr>
           {% endif %}
+          {# A thin brand rule closes the band off from the message. #}
+          <tr><td style="height:4px;line-height:4px;font-size:0;background:#E4191D;">&nbsp;</td></tr>
 
           <tr>
             <td class="pad" style="padding:24px 40px 8px;font-family:Tahoma,Arial,sans-serif;text-align:{{ words.align }};">

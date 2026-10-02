@@ -217,3 +217,32 @@ class Privacy(DecisionTestBase):
         self.client.force_authenticate(self.president)
         body = self.client.get(f'/api/admin/registrations/{reg.pk}/').json()
         self.assertEqual(body['email'], 'amine@example.dz')
+
+
+class TheEmailItself(DecisionTestBase):
+    def test_no_template_comment_leaks_into_the_email(self):
+        """A two-line {# … #} is printed literally by Django; one was."""
+        for status, extra in (('approve', {}), ('reject', {'reason': 'OTHER', 'note': 'x'})):
+            with self.subTest(status=status):
+                mail.outbox.clear()
+                reg = self.registration()
+                if status == 'approve':
+                    self.approve(reg)
+                else:
+                    self.reject(reg, **extra)
+                message = mail.outbox[0]
+                for text in (message.alternatives[0][0], message.body):
+                    self.assertNotIn('{#', text)
+                    self.assertNotIn('#}', text)
+                    self.assertNotIn('{%', text)
+
+    def test_the_illustrations_travel_inside_the_message(self):
+        self.approve(self.registration())
+        cids = {part['Content-ID'] for part in mail.outbox[0].attachments if hasattr(part, 'get')}
+        self.assertEqual(cids, {'<logo>', '<header>', '<hero>'})
+
+    def test_embedded_images_are_kept_small(self):
+        self.approve(self.registration())
+        total = sum(len(part.get_payload(decode=True)) for part in mail.outbox[0].attachments
+                    if hasattr(part, 'get'))
+        self.assertLess(total, 600 * 1024, f'{total // 1024} KB of images in one email')
