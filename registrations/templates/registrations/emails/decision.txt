@@ -1,0 +1,25 @@
+{% autoescape off %}{{ club_name }}
+
+{{ title }}
+
+{{ greeting }}
+
+{{ intro }}
+{% if reason %}
+{{ words.reason_label }}: {{ reason }}{% endif %}{% if note %}
+{% if reason %}{{ words.note_label }}{% else %}{{ words.reason_label }}{% endif %}: {{ note }}{% endif %}
+
+{{ words.details_title }}
+{% for label, value in details %}- {{ label }}: {{ value }}
+{% endfor %}
+{{ next }}
+
+{{ button_label }}: {{ button_url }}
+
+--
+{{ club_name }}{% if club_email %}
+{{ club_email }}{% endif %}{% if club_phone %}
+{{ club_phone }}{% endif %}
+{{ words.automated }}
+{{ site_url }}
+{% endautoescape %}

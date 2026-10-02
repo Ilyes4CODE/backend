@@ -11,6 +11,7 @@ urlpatterns = [
     path('settings/', views.public_settings, name='public-settings'),
     path('required-documents/', views.public_required_documents, name='public-required-documents'),
     path('registrations/', views.RegistrationCreateView.as_view(), name='registration-create'),
+    path('documents/check/', views.check_document, name='check-document'),
     path('registrations/<str:reference>/', views.RegistrationPublicDetailView.as_view(), name='registration-detail'),
     path('registrations/<str:reference>/pdf/', views.RegistrationPdfView.as_view(), name='registration-pdf'),
     path('admin/stats/', views.admin_stats, name='admin-stats'),

@@ -3,7 +3,7 @@ from django.db.models import ProtectedError, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, mixins, permissions, status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -11,6 +11,7 @@ from organization.models import profile_for
 from organization.permissions import IsSuperAdminOrReadOnly, scope_queryset_to_club
 
 from .categorization import categorize
+from .uploads import UploadProblem, check_upload
 from .models import RequiredDocument, Registration, SiteSettings, UploadedDocument
 from .serializers import (
     RegistrationAdminUpdateSerializer,
@@ -19,6 +20,8 @@ from .serializers import (
     RegistrationListSerializer,
     RequiredDocumentAdminSerializer,
     RequiredDocumentPublicSerializer,
+    RegistrationAdminDetailSerializer,
+    RejectionSerializer,
     SiteSettingsSerializer,
 )
 
@@ -95,6 +98,22 @@ class RegistrationCreateView(APIView):
         if missing:
             errors['documents'] = f'Missing required documents: {", ".join(missing)}'
 
+        # Every file must suit its document: a scanned PDF for official papers,
+        # an image for the photo. Checked here even though the form checks each
+        # file as it is chosen — the form can be bypassed; this cannot.
+        applicable = RequiredDocument.objects.filter(active=True).filter(_applies_to_filter(is_minor))
+        invalid = {}
+        for doc in applicable:
+            uploaded = request.FILES.get(f'doc_{doc.key}')
+            if uploaded is None:
+                continue
+            try:
+                check_upload(uploaded, doc.file_kind)
+            except UploadProblem as problem:
+                invalid[doc.key] = problem.as_dict()
+        if invalid:
+            errors['invalid_documents'] = invalid
+
         if errors:
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -118,6 +137,28 @@ class RegistrationCreateView(APIView):
                     )
 
         return Response(RegistrationDetailSerializer(registration).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def check_document(request):
+    """Check one file the moment a candidate chooses it.
+
+    Saves nothing. It exists so a wrong file — a Word export instead of a scan
+    — is caught while the form is being filled, not after the candidate has
+    uploaded everything and pressed submit.
+    """
+    key = request.data.get('key', '')
+    uploaded = request.FILES.get('file')
+    doc = RequiredDocument.objects.filter(key=key, active=True).first()
+    if doc is None or uploaded is None:
+        return Response({'code': 'BAD_REQUEST', 'message': 'Send a document key and a file.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    try:
+        check_upload(uploaded, doc.file_kind)
+    except UploadProblem as problem:
+        return Response(problem.as_dict(), status=status.HTTP_400_BAD_REQUEST)
+    return Response({'ok': True})
 
 
 class RegistrationPublicDetailView(generics.RetrieveAPIView):
@@ -164,8 +205,64 @@ class RegistrationAdminViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelV
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
-            return RegistrationDetailSerializer
+            return RegistrationAdminDetailSerializer
         return RegistrationListSerializer
+
+    def _decide(self, request, registration, status_, reason='', note=''):
+        """Save a decision, log it, then tell the candidate.
+
+        The decision is committed before the email is tried, so a mail server
+        that is down delays nothing and loses nothing: the response says
+        whether the candidate was told, and resend_email tries again.
+        """
+        from organization.activity import ActivityLog, record
+
+        from .emails import notify_decision
+
+        before = registration.status
+        registration.status = status_
+        registration.rejection_reason = reason
+        registration.rejection_note = note
+        registration.save(update_fields=['status', 'rejection_reason', 'rejection_note', 'updated_at'])
+        record(request.user, ActivityLog.REGISTRATION_STATUS, registration.reference,
+               club=registration.club, center=registration.center,
+               **{'from': before, 'to': status_, 'reason': reason})
+
+        email = notify_decision(registration)
+        data = RegistrationAdminDetailSerializer(registration).data
+        return Response({**data, 'email_result': email})
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """Accept the registration and email the candidate."""
+        registration = self.get_object()
+        if registration.status == 'APPROVED':
+            return Response({'detail': 'Already accepted.', 'code': 'ALREADY_DECIDED'},
+                            status=status.HTTP_409_CONFLICT)
+        return self._decide(request, registration, 'APPROVED')
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """Refuse the registration, with a reason, and email the candidate."""
+        registration = self.get_object()
+        serializer = RejectionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self._decide(request, registration, 'REJECTED',
+                            reason=serializer.validated_data['reason'],
+                            note=serializer.validated_data.get('note', ''))
+
+    @action(detail=True, methods=['post'], url_path='resend-email')
+    def resend_email(self, request, pk=None):
+        """Send the decision email again — after a failure, or on request."""
+        from .emails import notify_decision
+
+        registration = self.get_object()
+        if registration.status not in ('APPROVED', 'REJECTED'):
+            return Response({'detail': 'There is no decision to send yet.', 'code': 'NO_DECISION'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        email = notify_decision(registration)
+        data = RegistrationAdminDetailSerializer(registration).data
+        return Response({**data, 'email_result': email})
 
     def get_queryset(self):
         # A president sees their club's candidates; a branch manager only their
@@ -256,7 +353,7 @@ class RegistrationAdminViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelV
                    club=instance.club, center=instance.center,
                    **{'from': before['center'].name_en if before['center'] else None,
                       'to': instance.center.name_en if instance.center else None})
-        return Response(RegistrationDetailSerializer(instance).data)
+        return Response(RegistrationAdminDetailSerializer(instance).data)
 
 
 @api_view(['GET'])

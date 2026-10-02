@@ -225,3 +225,28 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Uploads on a shared host: keep a lid on what a single request may push.
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000
+
+# ── Email ───────────────────────────────────────────────────────────────────
+# Decisions on registrations are emailed to candidates from the club's own
+# mailbox. Every credential comes from .env; nothing here is secret. Without a
+# password — on a developer's machine — emails are printed to the console
+# instead of sent, so nobody receives a test by accident.
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'mail.binhdinhgia.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '465'))
+# cPanel's "secure" settings: implicit TLS on 465, not STARTTLS on 587.
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'True') == 'True'
+EMAIL_USE_TLS = not EMAIL_USE_SSL and os.environ.get('EMAIL_USE_TLS', 'False') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+# A decision is saved before its email is sent, so a slow mail server only
+# delays the admin's confirmation — never loses the decision.
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '20'))
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.smtp.EmailBackend' if EMAIL_HOST_PASSWORD
+    else 'django.core.mail.backends.console.EmailBackend',
+)
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'no-reply@binhdinhgia.com')
+
+# Where the public site lives, for links in emails.
+SITE_URL = os.environ.get('SITE_URL', 'https://binhdinhgia.com').rstrip('/')

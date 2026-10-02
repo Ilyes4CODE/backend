@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+{% comment %}
+  The decision email. Built from tables with inline styles because that is
+  what email clients reliably render; one column, 600px at most, fluid below.
+  Light colours are declared outright and the colour scheme pinned to light,
+  so a dark-mode client does not invert the illustrations into mud.
+{% endcomment %}
+<html lang="{{ lang }}" dir="{{ words.dir }}" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>{{ subject }}</title>
+<style>
+  body { margin: 0; padding: 0; background: #F4EFE9; }
+  img { border: 0; display: block; max-width: 100%; height: auto; }
+  a { color: #E4191D; }
+  @media only screen and (max-width: 620px) {
+    .container { width: 100% !important; border-radius: 0 !important; }
+    .pad { padding-left: 20px !important; padding-right: 20px !important; }
+    .title { font-size: 22px !important; }
+    .button a { display: block !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#F4EFE9;">
+  {# What an inbox shows beside the subject, kept out of the body itself. #}
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#F4EFE9;">{{ preheader }}</div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4EFE9" style="background:#F4EFE9;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+
+        <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" dir="{{ words.dir }}"
+               bgcolor="#FFFFFF" style="width:600px;max-width:600px;background:#FFFFFF;border-radius:14px;overflow:hidden;">
+
+          {# Masthead: the club's logo and name. Reads fine with images off. #}
+          <tr>
+            <td align="center" class="pad" style="padding:28px 32px 12px;">
+              {% if has.logo %}<img src="cid:logo" width="72" alt="{{ club_name }}" style="width:72px;height:auto;margin:0 auto 10px;">{% endif %}
+              <div style="font-family:Tahoma,Arial,sans-serif;font-size:15px;font-weight:bold;color:#1A1A1A;">{{ club_name }}</div>
+            </td>
+          </tr>
+
+          {% if has.header %}
+          <tr><td><img src="cid:header" width="600" alt="" style="width:100%;max-width:600px;"></td></tr>
+          {% else %}
+          <tr><td style="height:4px;line-height:4px;font-size:0;background:#E4191D;">&nbsp;</td></tr>
+          {% endif %}
+
+          {% if has.hero %}
+          <tr>
+            <td align="center" class="pad" style="padding:24px 48px 0;">
+              <img src="cid:hero" width="440" alt="" style="width:100%;max-width:440px;margin:0 auto;">
+            </td>
+          </tr>
+          {% endif %}
+
+          <tr>
+            <td class="pad" style="padding:24px 40px 8px;font-family:Tahoma,Arial,sans-serif;text-align:{{ words.align }};">
+              <h1 class="title" style="margin:0 0 16px;font-size:26px;line-height:1.3;color:{% if approved %}#1A1A1A{% else %}#1A1A1A{% endif %};">
+                {% if approved %}<span style="color:#E4191D;">&#10003;</span> {% endif %}{{ title }}
+              </h1>
+              <p style="margin:0 0 10px;font-size:16px;line-height:1.7;color:#1A1A1A;">{{ greeting }}</p>
+              <p style="margin:0 0 18px;font-size:16px;line-height:1.7;color:#3A3A3A;">{{ intro }}</p>
+
+              {% if not approved and reason or not approved and note %}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="margin:0 0 20px;background:#FFF1F1;border-radius:10px;">
+                <tr>
+                  <td style="padding:14px 18px;border-{% if words.dir == 'rtl' %}right{% else %}left{% endif %}:4px solid #E4191D;border-radius:10px;font-family:Tahoma,Arial,sans-serif;text-align:{{ words.align }};">
+                    {% if reason %}
+                    <div style="font-size:13px;color:#8A1C1C;font-weight:bold;margin-bottom:4px;">{{ words.reason_label }}</div>
+                    <div style="font-size:15px;line-height:1.6;color:#1A1A1A;">{{ reason }}</div>
+                    {% endif %}
+                    {% if note %}
+                    <div style="font-size:13px;color:#8A1C1C;font-weight:bold;margin:{% if reason %}12px{% else %}0{% endif %} 0 4px;">{% if reason %}{{ words.note_label }}{% else %}{{ words.reason_label }}{% endif %}</div>
+                    <div style="font-size:15px;line-height:1.6;color:#1A1A1A;white-space:pre-line;">{{ note }}</div>
+                    {% endif %}
+                  </td>
+                </tr>
+              </table>
+              {% endif %}
+
+              {# The registration at a glance. #}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="margin:0 0 22px;background:#FAF7F3;border-radius:10px;">
+                <tr>
+                  <td style="padding:16px 18px 6px;font-family:Tahoma,Arial,sans-serif;font-size:13px;font-weight:bold;color:#8A8A8A;text-align:{{ words.align }};">
+                    {{ words.details_title }}
+                  </td>
+                </tr>
+                {% for label, value in details %}
+                <tr>
+                  <td style="padding:6px 18px;{% if forloop.last %}padding-bottom:16px;{% endif %}font-family:Tahoma,Arial,sans-serif;text-align:{{ words.align }};">
+                    <span style="font-size:13px;color:#8A8A8A;">{{ label }}:</span>
+                    <span style="font-size:15px;color:#1A1A1A;font-weight:bold;">&nbsp;{{ value }}</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </table>
+
+              <p style="margin:0 0 22px;font-size:15px;line-height:1.7;color:#3A3A3A;">{{ next }}</p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="button" align="center" style="margin:0 auto 28px;">
+                <tr>
+                  <td align="center" bgcolor="#E4191D" style="border-radius:10px;">
+                    <a href="{{ button_url }}" target="_blank"
+                       style="display:inline-block;padding:14px 30px;font-family:Tahoma,Arial,sans-serif;font-size:16px;font-weight:bold;color:#FFFFFF;text-decoration:none;border-radius:10px;">
+                      {{ button_label }}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          {# Footer: who wrote, how to reach them, and that this box is not read. #}
+          <tr>
+            <td class="pad" style="padding:20px 40px 28px;border-top:1px solid #EFE8E0;font-family:Tahoma,Arial,sans-serif;text-align:center;">
+              <div style="font-size:14px;font-weight:bold;color:#1A1A1A;">{{ club_name }}</div>
+              {% if club_email or club_phone %}
+              <div style="font-size:13px;color:#6A6A6A;margin-top:6px;">
+                {{ words.contact }}:
+                {% if club_email %}<a href="mailto:{{ club_email }}" style="color:#E4191D;" dir="ltr">{{ club_email }}</a>{% endif %}
+                {% if club_email and club_phone %} · {% endif %}
+                {% if club_phone %}<span dir="ltr">{{ club_phone }}</span>{% endif %}
+              </div>
+              {% endif %}
+              <div style="font-size:12px;color:#9A9A9A;margin-top:12px;">{{ words.automated }}</div>
+              <div style="font-size:12px;margin-top:6px;"><a href="{{ site_url }}" style="color:#9A9A9A;">{{ site_url }}</a></div>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -16,13 +16,14 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
 class RequiredDocumentPublicSerializer(serializers.ModelSerializer):
     class Meta:
         model = RequiredDocument
-        fields = ['id', 'key', 'label_ar', 'label_en', 'label_vi', 'required', 'applies_to']
+        fields = ['id', 'key', 'label_ar', 'label_en', 'label_vi', 'required', 'applies_to', 'file_kind']
 
 
 class RequiredDocumentAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = RequiredDocument
-        fields = ['id', 'key', 'label_ar', 'label_en', 'label_vi', 'applies_to', 'required', 'order', 'active']
+        fields = ['id', 'key', 'label_ar', 'label_en', 'label_vi', 'applies_to', 'required', 'order', 'active',
+                  'file_kind']
         # Generated from the label on save — the admin never types it.
         read_only_fields = ['key']
 
@@ -37,8 +38,12 @@ class RegistrationCreateSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'latin_full_name', 'gender', 'birth_date', 'birth_place',
             'address', 'phone', 'education_level', 'institution',
             'parent_name', 'parent_id_type', 'parent_id_number', 'parent_id_issue_date',
+            'email', 'language',
         ]
         extra_kwargs = {
+            # Where the club's decision is sent: every new registration needs one.
+            'email': {'required': True, 'allow_blank': False},
+            'language': {'required': False},
             'club': {'required': True, 'allow_null': False},
             'center': {'required': False, 'allow_null': True},
             # The column allows blank for rows that predate the field, but every
@@ -95,6 +100,37 @@ class RegistrationDetailSerializer(serializers.ModelSerializer):
         ]
 
 
+class RegistrationAdminDetailSerializer(RegistrationDetailSerializer):
+    """The dashboard's view of a registration.
+
+    The base serializer also answers the public "view your registration" page,
+    which anyone holding the reference can open — so the email address and the
+    reasons for a refusal are added here, for staff only.
+    """
+
+    rejection_reason_display = serializers.CharField(
+        source='get_rejection_reason_display', read_only=True)
+
+    class Meta(RegistrationDetailSerializer.Meta):
+        fields = RegistrationDetailSerializer.Meta.fields + [
+            'email', 'language', 'rejection_reason', 'rejection_reason_display',
+            'rejection_note', 'decision_email_status', 'decision_email_at',
+        ]
+
+
+class RejectionSerializer(serializers.Serializer):
+    """Why a registration is refused: a common reason, a note, or both."""
+
+    reason = serializers.ChoiceField(choices=Registration.REJECTION_REASON_CHOICES)
+    note = serializers.CharField(required=False, allow_blank=True, max_length=1000, trim_whitespace=True)
+
+    def validate(self, attrs):
+        # "Other" says nothing by itself; the candidate must be told what.
+        if attrs['reason'] == 'OTHER' and not attrs.get('note'):
+            raise serializers.ValidationError({'note': 'Write the reason when choosing "Other".'})
+        return attrs
+
+
 class RegistrationListSerializer(serializers.ModelSerializer):
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     gender_display = serializers.CharField(source='get_gender_display', read_only=True)
@@ -127,6 +163,15 @@ class RegistrationAdminUpdateSerializer(serializers.ModelSerializer):
         model = Registration
         fields = ['status', 'payment_status', 'center']
         extra_kwargs = {'center': {'required': False, 'allow_null': True}}
+
+    def validate_status(self, status):
+        # Accepting and refusing tell the candidate by email, so they go
+        # through their own actions — approve/ and reject/ — where the email
+        # is sent and the reason recorded. Reopening a decision is plain.
+        if status != 'PENDING':
+            raise serializers.ValidationError(
+                'Accept or refuse a registration with its approve or reject action.')
+        return status
 
     def validate_center(self, center):
         from organization.models import profile_for

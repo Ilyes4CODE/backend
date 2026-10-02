@@ -54,6 +54,16 @@ class RequiredDocument(models.Model):
     order = models.PositiveIntegerField(default=0)
     active = models.BooleanField(default=True)
 
+    # What a candidate may upload for this document. Official papers must be
+    # scans; the ID photo stays an image, because the membership card prints it.
+    SCAN_PDF = 'SCAN_PDF'
+    IMAGE = 'IMAGE'
+    FILE_KIND_CHOICES = [
+        (SCAN_PDF, 'Scanned PDF'),
+        (IMAGE, 'Image (JPG or PNG)'),
+    ]
+    file_kind = models.CharField(max_length=10, choices=FILE_KIND_CHOICES, default=SCAN_PDF)
+
     class Meta:
         ordering = ['order', 'id']
 
@@ -136,6 +146,36 @@ class Registration(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
     payment_status = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default='UNPAID')
     season = models.CharField(max_length=20)
+
+    # Where the decision is sent. Blank only on rows that predate the field.
+    email = models.EmailField(blank=True)
+    # The language the candidate filled the form in; their emails use it.
+    LANGUAGE_CHOICES = [('ar', 'العربية'), ('en', 'English'), ('vi', 'Tiếng Việt')]
+    language = models.CharField(max_length=2, choices=LANGUAGE_CHOICES, default='ar')
+
+    # Why a registration was refused — one of a few common reasons, and an
+    # optional note in the admin's own words. Both go into the email.
+    REJECTION_REASON_CHOICES = [
+        ('INCOMPLETE', 'Incomplete file'),
+        ('UNREADABLE', 'Documents unreadable'),
+        ('MISMATCH', 'Information does not match the documents'),
+        ('NO_PLACE', 'No place left in this category'),
+        ('DUPLICATE', 'Duplicate registration'),
+        ('OTHER', 'Other'),
+    ]
+    rejection_reason = models.CharField(max_length=12, choices=REJECTION_REASON_CHOICES, blank=True)
+    rejection_note = models.TextField(blank=True)
+
+    # Whether the candidate was told. A decision stands whether or not the
+    # email got through; this is what tells the admin to resend.
+    EMAIL_SENT, EMAIL_FAILED, EMAIL_NONE = 'SENT', 'FAILED', 'NO_EMAIL'
+    DECISION_EMAIL_CHOICES = [
+        (EMAIL_SENT, 'Sent'),
+        (EMAIL_FAILED, 'Failed'),
+        (EMAIL_NONE, 'No address on file'),
+    ]
+    decision_email_status = models.CharField(max_length=10, choices=DECISION_EMAIL_CHOICES, blank=True)
+    decision_email_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

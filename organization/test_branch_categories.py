@@ -32,6 +32,7 @@ def payload(club, center=None, *, birth_date=None, minor=False):
         'first_name': 'Amine', 'last_name': 'Benali', 'latin_full_name': 'Amine Benali',
         'gender': 'MALE', 'birth_date': (birth_date or adult_birth_date()).isoformat(),
         'birth_place': 'Ouargla', 'address': 'Rue 1', 'phone': '0555000000',
+        'email': 'amine@example.dz',
     }
     if center is not None:
         data['center'] = center.pk

@@ -430,12 +430,9 @@ class CompetitionOwnershipTests(HierarchyFixture):
 
 class ActivityLogScopingTests(HierarchyFixture):
     def test_each_level_reads_only_its_own_history(self):
-        self.as_(self.khafji_mgr).patch(f'/api/admin/registrations/{self.k1.pk}/',
-                                        {'status': 'APPROVED'}, format='json')
-        self.as_(self.lassilis_mgr).patch(f'/api/admin/registrations/{self.l1.pk}/',
-                                          {'status': 'APPROVED'}, format='json')
-        self.as_(self.alger_pres).patch(f'/api/admin/registrations/{self.a1.pk}/',
-                                        {'status': 'APPROVED'}, format='json')
+        self.as_(self.khafji_mgr).post(f'/api/admin/registrations/{self.k1.pk}/approve/')
+        self.as_(self.lassilis_mgr).post(f'/api/admin/registrations/{self.l1.pk}/approve/')
+        self.as_(self.alger_pres).post(f'/api/admin/registrations/{self.a1.pk}/approve/')
 
         def targets(user):
             rows = self.as_(user).get('/api/admin/activity/').json()['results']
